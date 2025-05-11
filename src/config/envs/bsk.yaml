@@ -1,0 +1,43 @@
+env: "bsk"
+
+env_args:
+  key: null
+  time_limit: 100
+  pretrained_wrapper: null
+
+  # Satellites
+  n_satellites: 4
+  n_act_image: 4
+  n_obs_image: 4
+
+  # Resources params
+  battery_capacity: 400
+  memory_size: 1000
+  baud_rate: 4.3
+  instr_baud_rate: 500
+  init_battery_level: 100
+  init_memory_percent: 0
+
+  # Orbits
+  orbit_num: 2
+  # Targets
+  uniform_targets: 2000
+  # Penalty
+  failure_penalty: -100
+  # Rendering
+  use_render: False
+
+
+
+test_greedy: True
+test_nepisode: 5
+test_interval: 5000
+log_interval: 5000
+runner_log_interval: 1000
+learner_log_interval: 1000
+t_max: 100000
+save_model: True # Save the models to disk
+save_model_interval: 25000 # Save models after this many timesteps
+
+obs_agent_id: True # Include the agent's one_hot id in the observation
+obs_last_action: False # Include the agent's last action (one_hot) in the observation
