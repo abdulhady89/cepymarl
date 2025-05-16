@@ -3,11 +3,11 @@
 action_selector: "soft_policies"
 mask_before_softmax: True
 
-runner: "parallel"
+runner: "parallel_continual"
 
 buffer_size: 10
-batch_size_run: 10 
-batch_size: 10 
+batch_size_run: 10
+batch_size: 10
 
 # update the target network every {} training steps
 target_update_interval_or_tau: 0.01
@@ -31,4 +31,7 @@ epochs: 5
 eps_clip: 0.2
 name: "mappo"
 
-
+# Continual task
+run_continual: True
+checkpoint_path: "results/models/mappo_seed291604234_cluster-default_2025-05-15 11:26:12.156367"
+c_tasks: ['cluster-default','walker-limited_all']

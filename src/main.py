@@ -17,7 +17,7 @@ from sacred.utils import apply_backspaces_and_linefeeds
 import torch as th
 
 from utils.logging import get_logger
-from run import run
+
 
 SETTINGS["CAPTURE_MODE"] = (
     "fd"  # set to "no" if you want to see stdout/stderr in console
@@ -40,8 +40,13 @@ def my_main(_run, _config, _log):
     th.manual_seed(config["seed"])
     config["env_args"]["seed"] = config["seed"]
 
-    # run the framework
-    run(_run, config, _log)
+    # run the framework --> modified to accomodate continual learning
+    if not config['run_continual']:
+        from run import run
+        run(_run, config, _log)
+    else:
+        from run2task import run
+        run(_run, config, _log)
 
 
 def _get_config(params, arg_name, subfolder):

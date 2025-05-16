@@ -328,6 +328,16 @@ def make_BSK_Walker_env(env_args, satellite_names, scenario):
         random_RW_speed = True
         baud_rate = env_args.baud_rate
         instr_baud_rate = env_args.instr_baud_rate
+        
+    elif scenario == "limited_all":
+        battery_sizes = [50]*len(satellite_names)
+        memory_sizes = [5000]*len(satellite_names)
+        random_init_memory = False
+        random_init_battery = False
+        random_disturbance = False
+        random_RW_speed = False
+        baud_rate = 0.5
+        instr_baud_rate = 125
 
     else:
         print("Scenario name not available")
@@ -336,7 +346,7 @@ def make_BSK_Walker_env(env_args, satellite_names, scenario):
     # Define four satellites in a "train" Cluster formation along the same orbit
     multiSat = []
     index = 0
-    for battery_size in battery_sizes:
+    for battery_size, memory_size in zip(battery_sizes, memory_sizes):
         sat_args = dict(
             # Power
             batteryStorageCapacity=battery_size * 3600,
@@ -445,8 +455,10 @@ class BSKWrapper(MultiAgentEnv):
         
         if bsk_scenario[0] == "cluster":
             self._env = make_BSK_Cluster_env(env_args,self.satellite_names,bsk_scenario[1])
+            print("Running BSK-ENV with cluster scenario")
         elif bsk_scenario[0] == "walker":
             self._env = make_BSK_Walker_env(env_args,self.satellite_names,bsk_scenario[1])
+            print("Running BSK-ENV with walker-delta scenario")
         else:
             print("Scenario name not available")
             NotImplementedError

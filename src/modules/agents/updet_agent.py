@@ -15,7 +15,7 @@ class UPDeT(nn.Module):
         # make hidden states on same device as model
         return torch.zeros(1, self.args.emb).to(self.args.device) #was .cuda()
 
-    def forward(self, inputs, hidden_state, task_enemy_num, task_ally_num):
+    def forward(self, inputs, hidden_state, task_enemy_num=None, task_ally_num=None):
         outputs, _ = self.transformer.forward(inputs, hidden_state, None)
         # first output for 6 action (no_op stop up down left right)
         q_basic_actions = self.q_basic(outputs[:, 0, :])
@@ -23,19 +23,22 @@ class UPDeT(nn.Module):
         # last dim for hidden state
         h = outputs[:, -1:, :]
 
-        q_enemies_list = []
+        if task_enemy_num and task_ally_num is not None:
+            q_enemies_list = []
 
-        # each enemy has an output Q
-        for i in range(task_enemy_num):
-            q_enemy = self.q_basic(outputs[:, 1 + i, :])
-            q_enemy_mean = torch.mean(q_enemy, 1, True)
-            q_enemies_list.append(q_enemy_mean)
+            # each enemy has an output Q
+            for i in range(task_enemy_num):
+                q_enemy = self.q_basic(outputs[:, 1 + i, :])
+                q_enemy_mean = torch.mean(q_enemy, 1, True)
+                q_enemies_list.append(q_enemy_mean)
 
-        # concat enemy Q over all enemies
-        q_enemies = torch.stack(q_enemies_list, dim=1).squeeze()
+            # concat enemy Q over all enemies
+            q_enemies = torch.stack(q_enemies_list, dim=1).squeeze()
 
-        # concat basic action Q with enemy attack Q
-        q = torch.cat((q_basic_actions, q_enemies), 1)
+            # concat basic action Q with enemy attack Q
+            q = torch.cat((q_basic_actions, q_enemies), 1)
+        else:
+            q = q_basic_actions
 
         return q, h
 
@@ -173,13 +176,14 @@ def mask_(matrices, maskval=0.0, mask_diagonal=True):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Unit Testing')
-    parser.add_argument('--token_dim', default='5', type=int)
+    parser.add_argument('--token_dim', default='15', type=int)
     parser.add_argument('--emb', default='32', type=int)
     parser.add_argument('--heads', default='3', type=int)
     parser.add_argument('--depth', default='2', type=int)
     parser.add_argument('--ally_num', default='5', type=int)
     parser.add_argument('--enemy_num', default='5', type=int)
-    parser.add_argument('--episode', default='20', type=int)
+    parser.add_argument('--episode', default='5', type=int)
+    parser.add_argument('--device', default='cuda', type=str)
     args = parser.parse_args()
 
 
@@ -189,8 +193,11 @@ if __name__ == '__main__':
     # tensor = torch.rand(args.ally_num, args.ally_num+args.enemy_num, args.token_dim).cuda()
     agent = UPDeT(None, args).to(args.device)
     hidden_state = agent.init_hidden().to(args.device).expand(args.ally_num, 1, -1)
-    tensor = torch.rand(args.ally_num, args.ally_num+args.enemy_num, args.token_dim).to(args.device)
+    # tensor = torch.rand(args.ally_num, args.ally_num+args.enemy_num, args.token_dim).to(args.device)
+    #test with only agent number (ally_num)
+    tensor = torch.rand(args.ally_num, args.ally_num, args.token_dim).to(args.device)
     q_list = []
     for _ in range(args.episode):
-        q, hidden_state = agent.forward(tensor, hidden_state, args.ally_num, args.enemy_num)
+        # q, hidden_state = agent.forward(tensor, hidden_state, args.ally_num, args.enemy_num)
+        q, hidden_state = agent.forward(tensor, hidden_state)
         q_list.append(q)
