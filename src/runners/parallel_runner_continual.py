@@ -224,7 +224,7 @@ class ContinualParallelRunner:
 
         cur_stats = self.test_stats if test_mode else self.train_stats
         cur_returns = self.test_returns if test_mode else self.train_returns
-        log_prefix = f"test_{task}_task" if test_mode else ""
+        log_prefix = f"test_{task}_task_" if test_mode else ""
         infos = [cur_stats] + final_env_infos
         cur_stats.update(
             {

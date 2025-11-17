@@ -1,0 +1,10 @@
+env: "bsk"
+train_tasks: [
+  "default",
+  "limited-mem",
+  "limited-batt",
+  "random"
+
+]
+t_max: -1
+change_task_interval: 500000

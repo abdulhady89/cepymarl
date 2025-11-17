@@ -203,6 +203,16 @@ VMAS:
 python src/main.py --config=qmix --env-config=gymma with env_args.time_limit=150 env_args.key="vmas-balance"
 ```
 
+BSK:
+```sh
+python src/main.py --config=mappo_ns_bsk --env-config=bsk_sar
+```
+BSK-Continual:
+```sh
+nohup python src/main.py --config=mappo_ns_bsk_cont --env-config=bsk with env_args.key="cluster-limited_mem" >log_lim_mem_2_def.txt &
+
+nohup python src/main.py --config=mappo_ns_bsk --env-config=bsk with env_args.key="cluster-limited_mem" >log_task1_lim_mem.txt &
+```
 ## Registering and Running Experiments in Custom Environments
 
 EPyMARL supports environments that have been registered with Gymnasium. If you would like to use any other Gymnasium environment, you can do so by using the `gymma` environment with the `env_args.key` argument being provided with the registration ID of the environment. Environments can either provide a single scalar reward to run common reward experiments (`common_reward=True`), or should provide one environment per agent to run experiments with individual rewards (`common_reward=False`) or with common rewards using some reward scalarisation (see [documentation](#support-for-training-in-environments-with-individual-rewards-for-all-agents) for more details). 

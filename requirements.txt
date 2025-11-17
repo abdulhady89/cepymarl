@@ -27,8 +27,8 @@ six
 sk-video
 snakeviz
 tensorboard-logger
-torch
-torchvision
+# torch
+# torchvision
 tornado
 urllib3
 websocket-client

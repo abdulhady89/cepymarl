@@ -31,4 +31,6 @@ epochs: 5
 eps_clip: 0.2
 name: "mappo"
 
+run_continual: False
+
 

@@ -435,6 +435,168 @@ def make_BSK_Walker_env(env_args, satellite_names, scenario):
     return env
 
 
+def make_BSK_SAR_env(args):
+    satellite_names = []
+    satellite_names.append(f"IMG-Sat")
+    satellite_names.append(f"SAR-Sat")
+
+    inclination = -15.0  # degrees, fixed for all satellites
+    altitude = 500  # km, fixed for all satellites
+    eccentricity = 0  # Circular orbit
+    LAN = 0  # Longitude of Ascending Node (Omega), fixed for all
+    arg_periapsis = 0  # Argument of Periapsis (omega), fixed for all
+    # offset = 225
+    true_anomaly_offsets = [
+        30-i*1 for i in range(len(satellite_names))]  # degrees
+
+    orbit_ls = []
+    for offset in true_anomaly_offsets:
+        orbit = random_orbit(
+            i=inclination, 
+            alt=altitude, 
+            e=eccentricity, 
+            Omega=LAN, 
+            omega=arg_periapsis, 
+            f=offset
+        )
+        orbit_ls.append(orbit)
+
+    # Battery sizes in Wh, converted to Joules
+    battery_sizes = [400, 400]
+
+    # Define the Imaging satellite arguments
+    img_sat_args = dict(
+        u_max=0.4,
+        omega_max=0.1,
+        servo_Ki=5.0,
+        servo_P=150,
+        dataStorageCapacity=args.memory_size * 8e6,
+        storageInit=int(args.memory_size *
+                        args.init_memory_percent/100) * 8e6,
+        # storageInit=args.memory_size * 8e6,
+        instrumentBaudRate=args.instr_baud_rate * 1e6,  # 1Mbps
+        transmitterBaudRate=-1*args.baud_rate * 1e6,
+        # args.battery_capacity * 3600,
+        batteryStorageCapacity=battery_sizes[0] * 3600,
+        # storedCharge_Init=int(args.battery_capacity *
+        #   args.init_battery_level / 100) * 3600 if not args.randomize_enabled else np.random.uniform(args.battery_capacity * 3600 * 0.2, args.battery_capacity * 3600 * 0.8),
+        storedCharge_Init=int(battery_sizes[0] * 3600 *
+                              args.init_battery_level / 100),
+        panelArea=1.0,
+        panelEfficiency=20.0,
+        basePowerDraw=-10.0,
+        instrumentPowerDraw=-30.0,
+        transmitterPowerDraw=-25.0,
+        thrusterPowerDraw=-80.0,
+        imageAttErrorRequirement=0.1,
+        imageRateErrorRequirement=0.1,
+        disturbance_vector=np.array(
+            [0.0, 0.0, 0.0]),
+        maxWheelSpeed=6000.0,
+        wheelSpeeds=np.array(
+            [0.0, 0.0, 0.0]),
+        desatAttitude="nadir",
+        oe=orbit_ls[0]
+    )
+
+    # Define the SAR satellite arguments
+    sar_sat_args = dict(
+        u_max=0.4,
+        omega_max=0.1,
+        servo_Ki=5.0,
+        servo_P=150,
+        dataStorageCapacity=args.memory_size * 8e6,
+        storageInit=int(args.memory_size *
+                        args.init_memory_percent/100) * 8e6,
+        # storageInit=args.memory_size * 8e6,
+        instrumentBaudRate=2*args.instr_baud_rate * 1e6,  # 1Mbps
+        transmitterBaudRate=-4*args.baud_rate * 1e6,
+        # args.battery_capacity * 3600,
+        batteryStorageCapacity=battery_sizes[1] * 3600,
+        # storedCharge_Init=int(args.battery_capacity *
+        #   args.init_battery_level / 100) * 3600 if not args.randomize_enabled else np.random.uniform(args.battery_capacity * 3600 * 0.2, args.battery_capacity * 3600 * 0.8),
+        storedCharge_Init=int(battery_sizes[1] * 3600 *
+                              args.init_battery_level / 100),
+        panelArea=1.0,
+        panelEfficiency=20.0,
+        basePowerDraw=-10.0,
+        instrumentPowerDraw=-60.0,
+        transmitterPowerDraw=-25.0,
+        thrusterPowerDraw=-80.0,
+        imageAttErrorRequirement=0.1,
+        imageRateErrorRequirement=0.1,
+        disturbance_vector=np.array(
+            [0.0, 0.0, 0.0]),
+        maxWheelSpeed=6000.0,
+        wheelSpeeds=np.array(
+            [0.0, 0.0, 0.0]),
+        desatAttitude="nadir",
+        oe=orbit_ls[1]
+    )
+
+    class ImagingSatellite(sats.ImagingSatellite):
+        observation_spec = [
+            obs.SatProperties(
+                dict(prop="storage_level_fraction"),
+                dict(prop="battery_charge_fraction"),
+                dict(prop="wheel_speeds_fraction"),
+                # dict(prop="omega_BP_P", norm=0.03),
+                # dict(prop="c_hat_P"),
+                # dict(prop="r_BN_P", norm=orbitalMotion.REQ_EARTH * 1e3),
+                # dict(prop="v_BN_P", norm=7616.5),
+            ),
+            # obs.Eclipse(norm=5700),
+            obs.OpportunityProperties(
+                dict(prop="priority"),
+                dict(prop="opportunity_open", norm=5700.0),
+                # Cloud coverage forecast (percentage of the area covered by clouds)
+                dict(fn=lambda sat, opp: opp["object"].cloud_cover_forecast),
+                # Confidence on the cloud coverage forecast
+                dict(fn=lambda sat, opp: opp["object"].cloud_cover_sigma),
+                type="target",
+                n_ahead_observe=args.n_obs_image,
+            ),
+            obs.OpportunityProperties(
+                dict(prop="opportunity_open", norm=5700),
+                # dict(prop="opportunity_close", norm=5700),
+                type="ground_station",
+                n_ahead_observe=1,
+            ),
+            # obs.Time(),
+        ]
+        action_spec = [
+            act.Image(n_ahead_image=args.n_act_image),
+            act.Charge(duration=20.0),
+            act.Downlink(duration=20.0),
+            act.Desat(duration=20.0)
+        ]
+        fsw_type = fsw.SteeringImagerFSWModel
+        dyn_type = dyn.ManyGroundStationFullFeaturedDynModel
+
+    img_sat = ImagingSatellite(satellite_names[0], img_sat_args)
+    sar_sat = ImagingSatellite(satellite_names[1], sar_sat_args)
+
+    multiSat = [img_sat, sar_sat]
+
+    duration = np.round(args.orbit_num * 5700.0)
+
+    target_total = args.uniform_targets
+    env = GeneralSatelliteTasking(
+        satellites=multiSat,
+        scenario=scene.UserDefOceanTargetswithCloud(target_total),
+        rewarder=data.UniqueImageSARReward(),
+        time_limit=duration,
+        communicator=comm.LOSCommunication(),
+        log_level="WARNING",
+        terminate_on_time_limit=True,
+        failure_penalty=-100.0,
+        # activate these lines to record visualization
+        vizard_dir="./tmp_sar/vizard" if args.use_render else None,
+        vizard_settings=dict(showLocationLabels=-
+                             1) if args.use_render else None,)
+    return env
+
+
 class BSKWrapper(MultiAgentEnv):
     def __init__(
         self,
@@ -447,9 +609,17 @@ class BSKWrapper(MultiAgentEnv):
         **kwargs,
     ):
         env_args=Munch.fromDict(kwargs)
+        
         self.satellite_names = []
         for i in range(env_args.n_satellites):
-            self.satellite_names.append(f"Satellite{i}")
+            self.satellite_names.append(f"Sat-{i}")
+        
+        self.action_names = []
+        for i in range(env_args.n_act_image):
+            self.action_names.append(f"Image_Target_{i}")
+        self.action_names.append("Charge")
+        self.action_names.append("Downlink")
+        self.action_names.append("Desaturate")
         
         bsk_scenario = f"{key}".split("-")
         
@@ -459,6 +629,9 @@ class BSKWrapper(MultiAgentEnv):
         elif bsk_scenario[0] == "walker":
             self._env = make_BSK_Walker_env(env_args,self.satellite_names,bsk_scenario[1])
             print("Running BSK-ENV with walker-delta scenario")
+        elif bsk_scenario[0] == "sar":
+            self._env = make_BSK_SAR_env(env_args)
+            print("Running BSK-ENV with SAR and OPTICAL Payload scenario")
         else:
             print("Scenario name not available")
             NotImplementedError
@@ -472,7 +645,10 @@ class BSKWrapper(MultiAgentEnv):
         self.n_agents = len(self.satellite_names)
         self.episode_limit = time_limit
         self._obs = None
-        self._info = None
+        self._info = {}
+        for sat in self.satellite_names:
+            for action_name in self.action_names:
+                self._info[f'{sat}-{action_name}'] = 0
 
         self.longest_action_space = max(self._env.action_space, key=lambda x: x.n)
         self.longest_observation_space = max(
@@ -510,9 +686,15 @@ class BSKWrapper(MultiAgentEnv):
     def step(self, actions):
         """Returns obss, reward, terminated, truncated, info"""
         actions = [int(a) for a in actions]
-        obs, reward, done, truncated, self._info = self._env.step(actions)
+        obs, reward, done, truncated, info = self._env.step(actions)
         self._obs = self._pad_observation(obs)
-        self._info = {}
+                
+        for i, sat in enumerate(self.satellite_names):
+            # Track battery for satellite `sat`
+            self._info[f'{sat}-batt']=obs[i][1].item()
+            # Track memory for satellite `sat`
+            self._info[f'{sat}-mem']=obs[i][0].item()
+            self._info[f'{sat}-{self.action_names[actions[i]]}'] += 1
 
         # if self.common_reward and isinstance(reward, Iterable):
         #     reward = float(self.reward_agg_fn(reward))
@@ -566,12 +748,18 @@ class BSKWrapper(MultiAgentEnv):
 
     def reset(self, seed=None, options=None):
         """Returns initial observations and info"""
-        obs, info = self._env.reset(seed=seed, options=options)
+        # obs, info = self._env.reset(seed=seed, options=options)
+        obs, info = self._env.reset(seed=0, options=options)
         self._obs = self._pad_observation(obs)
+        self._info = {}
+        for sat in self.satellite_names:
+            for action_name in self.action_names:
+                self._info[f'{sat}-{action_name}'] = 0
         return self._obs, info
 
     def render(self):
-        self._env.render()
+        pass
+        # self._env.render()
 
     def close(self):
         self._env.close()
