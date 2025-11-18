@@ -36,5 +36,5 @@ name: "mappo_ns"
 # Continual task
 run_continual: True
 # checkpoint_path: "results/models/mappo_ns_seed718966908_cluster-limited_mem_2025-06-03 17:42:34.843461"
-checkpoint_path: "results/models/mappo_ns_seed107179835_cluster-limited_mem_2025-06-29 06:33:06.811657"
+checkpoint_path: "trained_models/mappo_ns_seed107179835_cluster-limited_mem_2025-06-29 06:33:06.811657"
 c_tasks: ['cluster-limited_mem','cluster-default']
